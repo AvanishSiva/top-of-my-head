@@ -48,5 +48,48 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.put('/:id', async (req, res) => {
+  try {
+
+    const { id } = req.params;
+
+    const fields = req.body;
+
+    const setClauses = [];
+    const values = [];
+    let idx = 1;
+
+    for(const [key, value] of Object.entries(fields)){
+        setClauses.push(`${key} = $${idx}`);
+        values.push(value);
+        idx++;
+    }
+
+    if (setClauses.length === 0) {
+      return res.status(400).json({ error: 'No fields provided for update' });
+    }
+    values.push(id);
+
+    const query = `
+      UPDATE users
+      SET ${setClauses.join(', ')}
+      WHERE id = $${idx}
+      RETURNING *;
+    `;
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Memory not found' });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Database Error');
+  }
+});
+
 
 module.exports = router;
